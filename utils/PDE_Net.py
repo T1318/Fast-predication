@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
-from Model import PDE_ANN, weight_init
+from utils.Model import PDE_ANN, weight_init
 import torch.nn.functional as F
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
