@@ -317,3 +317,22 @@ def load_model(save_path, optimizer, model):
 	optimizer.load_state_dict(model_data['optimizer_state_dict'])
 	print('Load model at epoch:',model_data['epoch'])
 	return model_data['epoch']
+
+def normalize(bc, label):
+	'''
+	min:	[batch_size,2],		0:u,v,	1:p
+	max:	[batch_size,2],		0:u,v,	1:p
+	'''
+	min = torch.zeros((label.shape[0]))
+	max = torch.zeros((label.shape[0])) 
+	for i in range(bc.shape[0]):
+		min[i] = torch.min(label[i])
+		max[i] = torch.max(label[i])
+		bc[i] = (bc[i]-min[i])/(max[i]-min[i]+1e-6)
+		label[i] = (label[i]-min[i])/(max[i]-min[i]+1e-6)
+	return bc,label,min,max
+
+def inverse_normalize(variable,min,max):
+	for i in range(variable.shape[0]):
+			variable[i] = variable[i]*(max[i]-min[i]+1e-6)+min[i]
+	return variable

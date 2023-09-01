@@ -38,15 +38,19 @@ class DeepONet(nn.Module):
 	
 class DeepONet_NS(nn.Module):
 	
-	def __init__(self, branch_layer, trunk_layer):
+	def __init__(self, branch_input, trunk_input, branch_layer, trunk_layer, hidden_size,dropout):
 		super(DeepONet_NS, self).__init__()
+		self.branch_input = branch_input
+		self.trunk_input = trunk_input
 		self.branch_layer = branch_layer
 		self.trunk_layer = trunk_layer
+		self.hidden_size = hidden_size
+		self.dropout = dropout
 
 		self.loss_fun = nn.MSELoss()
 
-		self.branch_net = PDE_ANN(self.branch_layer)
-		self.trunk_net = PDE_ANN(self.trunk_layer)
+		self.branch_net = PDE_ANN(self.branch_input, self.hidden_size, self.branch_layer, self.hidden_size, self.dropout)
+		self.trunk_net = PDE_ANN(self.trunk_input, self.hidden_size, self.trunk_layer, self.hidden_size, self.dropout)
 
 		self.bias_last = torch.tensor(torch.zeros(1), requires_grad=True, device=device)
 

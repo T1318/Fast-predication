@@ -1,14 +1,21 @@
 import torch.nn as nn
 
 class PDE_ANN(nn.Module):
-	def __init__(self, hidden_list):
+	def __init__(self, input_size, hidden_size, hidden_layer, output_size, dropout=0.5):
 		super(PDE_ANN, self).__init__()
 		self.net = []
-		for i in range(len(hidden_list)-1):
-			self.net.append(nn.Linear(hidden_list[i], hidden_list[i+1]))
-			if i != len(hidden_list)-2:
-				self.net.append(nn.LeakyReLU())
-				# self.net.append(nn.BatchNorm1d(hidden_list[i+1])) 
+		self.dropout = nn.Dropout(p=dropout)
+
+		self.net.append(nn.Linear(input_size, hidden_size))
+		self.net.append(nn.LeakyReLU())
+		
+		for i in range(hidden_layer):
+			self.net.append(nn.Linear(hidden_size, hidden_size))
+			self.net.append(nn.LeakyReLU())
+			self.net.append(self.dropout)
+			self.net.append(nn.BatchNorm1d(hidden_size))
+
+		self.net.append(nn.Linear(hidden_size, output_size))
 		self.net = nn.ModuleList(self.net)
 	def forward(self,x):
 		for f in self.net:
@@ -20,16 +27,16 @@ class PDE_ANN(nn.Module):
 	
 def weight_init(m):
 	if isinstance(m, nn.Conv3d) or isinstance(m, nn.ConvTranspose3d):
-		nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+		nn.init.kaiming_uniform_(m.weight.data, mode='fan_in', nonlinearity='leaky_relu')
 		nn.init.constant_(m.bias.data, 0.1)
 	elif isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-		nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+		nn.init.kaiming_uniform_(m.weight.data, mode='fan_in', nonlinearity='leaky_relu')
 		nn.init.constant_(m.bias.data, 0.1)
 	elif isinstance(m, nn.BatchNorm3d):
 		nn.init.constant_(m.weight.data, 1.0)
 		nn.init.constant_(m.bias.data, 0.0)
 	elif isinstance(m, nn.Linear):
-		nn.init.normal_(m.weight.data, mean=0.0, std=1.0)
+		nn.init.kaiming_uniform_(m.weight.data, mode='fan_in', nonlinearity='leaky_relu')
 		nn.init.constant_(m.bias.data, 0.0)
 	elif isinstance(m, nn.BatchNorm1d):
 		nn.init.constant_(m.weight.data, 1.0)

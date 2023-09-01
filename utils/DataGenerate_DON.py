@@ -28,7 +28,8 @@ class Dataset_DON():
 		bc_right = self.train_label[:, :, -1]
 		bc_top = self.train_label[:, -1, :]
 		bc_bottom = self.train_label[:, 0, :]
-		self.bc = torch.concatenate((bc_left, bc_top, bc_right, bc_bottom), axis=1)
+		self.bc = np.concatenate((bc_left, bc_top, bc_right, bc_bottom), axis=1)
+		self.bc = torch.Tensor(self.bc)
 		self.min = torch.zeros(self.bc.shape[0])
 		self.max = torch.zeros(self.bc.shape[0])
 
@@ -56,6 +57,11 @@ class Dataset_DON():
 		return variable
 	def get_data(self):
 		self.coordinate = torch.Tensor(self.coordinate).reshape(-1,2)
+		train_index = np.random.choice(self.length,int(self.length),replace=False)
+		self.bc = self.bc[train_index]
+		self.train_label = self.train_label[train_index]
+		self.min = self.min[train_index]
+		self.max = self.max[train_index]
 		return self.bc,self.train_label,self.coordinate,self.min,self.max
 
 
