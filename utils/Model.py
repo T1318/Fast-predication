@@ -1,17 +1,18 @@
 import torch.nn as nn
 
 class PDE_ANN(nn.Module):
-	def __init__(self, input_size, hidden_size, hidden_layer, output_size, dropout=0.5):
+	def __init__(self, input_size, hidden_size, hidden_layer, output_size, activation, dropout=0.5):
 		super(PDE_ANN, self).__init__()
 		self.net = []
 		self.dropout = nn.Dropout(p=dropout)
+		self.func = activation
 
 		self.net.append(nn.Linear(input_size, hidden_size))
-		self.net.append(nn.LeakyReLU())
+		self.net.append(self.func)
 		
 		for i in range(hidden_layer):
 			self.net.append(nn.Linear(hidden_size, hidden_size))
-			self.net.append(nn.LeakyReLU())
+			self.net.append(self.func)
 			self.net.append(self.dropout)
 			self.net.append(nn.BatchNorm1d(hidden_size))
 

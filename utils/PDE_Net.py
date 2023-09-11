@@ -38,19 +38,20 @@ class DeepONet(nn.Module):
 	
 class DeepONet_NS(nn.Module):
 	
-	def __init__(self, branch_input, trunk_input, branch_layer, trunk_layer, hidden_size,dropout):
+	def __init__(self, branch_input, trunk_input, branch_layer, trunk_layer, hidden_size, activation, dropout):
 		super(DeepONet_NS, self).__init__()
 		self.branch_input = branch_input
 		self.trunk_input = trunk_input
 		self.branch_layer = branch_layer
 		self.trunk_layer = trunk_layer
 		self.hidden_size = hidden_size
+		self.activation = activation
 		self.dropout = dropout
 
 		self.loss_fun = nn.MSELoss()
 
-		self.branch_net = PDE_ANN(self.branch_input, self.hidden_size, self.branch_layer, self.hidden_size, self.dropout)
-		self.trunk_net = PDE_ANN(self.trunk_input, self.hidden_size, self.trunk_layer, self.hidden_size, self.dropout)
+		self.branch_net = PDE_ANN(self.branch_input, self.hidden_size, self.branch_layer, self.hidden_size, self.activation, self.dropout)
+		self.trunk_net = PDE_ANN(self.trunk_input, self.hidden_size, self.trunk_layer, self.hidden_size, self.activation, self.dropout)
 
 		self.bias_last = torch.tensor(torch.zeros(1), requires_grad=True, device=device)
 
@@ -70,15 +71,19 @@ class DeepONet_NS(nn.Module):
 		loss = self.loss_fun(y_pred, y_true)
 		return loss
 	
+# ====================================================================================================
+# ====================================================================================================
+
 class MLP(nn.Module):
-	def __init__(self, in_channels, out_channels, mid_channels):
+	def __init__(self, in_channels, out_channels, mid_channels, activation = nn.Identity()):
 		super(MLP, self).__init__()
 		self.mlp1 = nn.Conv2d(in_channels, mid_channels, 1)
 		self.mlp2 = nn.Conv2d(mid_channels, out_channels, 1)
+		self.func = activation
 
 	def forward(self, x):
 		x = self.mlp1(x)
-		x = F.gelu(x)
+		x = self.func(x)
 		x = self.mlp2(x)
 		return x
 
@@ -119,20 +124,9 @@ class SpectralConv2d(nn.Module):
 				#Return to physical space
 				x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
 				return x
-class MLP(nn.Module):
-	def __init__(self, in_channels, out_channels, mid_channels):
-		super(MLP, self).__init__()
-		self.mlp1 = nn.Conv2d(in_channels, mid_channels, 1)
-		self.mlp2 = nn.Conv2d(mid_channels, out_channels, 1)
-
-	def forward(self, x):
-		x = self.mlp1(x)
-		x = F.gelu(x)
-		x = self.mlp2(x)
-		return x
     
 class FNO2d(nn.Module):
-		def __init__(self, modes1, modes2,  width):
+		def __init__(self, modes1, modes2, width, activation, dropout_p):
 				super(FNO2d, self).__init__()
 
 				"""
@@ -152,21 +146,23 @@ class FNO2d(nn.Module):
 				self.modes2 = modes2	# modes2 = 12
 				self.width = width		# width = 20
 				self.padding = 8 # pad the domain if input is non-periodic
-
+				self.func = activation
+				self.dropout_p = dropout_p
 				self.p = nn.Linear(5, self.width) # input channel is 12: the solution of the previous 10 timesteps + 2 locations (u(t-10, x, y), ..., u(t-1, x, y),  x, y)
 				self.conv0 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
 				self.conv1 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
 				self.conv2 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
 				self.conv3 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-				self.mlp0 = MLP(self.width, self.width, self.width)
-				self.mlp1 = MLP(self.width, self.width, self.width)
-				self.mlp2 = MLP(self.width, self.width, self.width)
-				self.mlp3 = MLP(self.width, self.width, self.width)
+				self.mlp0 = MLP(self.width, self.width, self.width, self.func)
+				self.mlp1 = MLP(self.width, self.width, self.width, self.func)
+				self.mlp2 = MLP(self.width, self.width, self.width, self.func)
+				self.mlp3 = MLP(self.width, self.width, self.width, self.func)
 				self.w0 = nn.Conv2d(self.width, self.width, 1)
 				self.w1 = nn.Conv2d(self.width, self.width, 1)
 				self.w2 = nn.Conv2d(self.width, self.width, 1)
 				self.w3 = nn.Conv2d(self.width, self.width, 1)
 				self.norm = nn.InstanceNorm2d(self.width)
+				self.dropout = nn.Dropout2d(self.dropout_p)
 				self.q = MLP(self.width, 1, self.width * 4) # output channel is 1: u(x, y)
 
 		def forward(self, x):
@@ -181,19 +177,19 @@ class FNO2d(nn.Module):
 				x1 = self.mlp0(x1)												# MLP Layer [20,width=20,64,64] -> [20,width=20,64,64]
 				x2 = self.w0(x)														# W convolution Layer [20,width=20,64,64] -> [20,width=20,64,64]
 				x = x1 + x2
-				x = F.gelu(x)
+				x = self.func(x)													# Activation Function
 
 				x1 = self.norm(self.conv1(self.norm(x)))
 				x1 = self.mlp1(x1)
 				x2 = self.w1(x)
 				x = x1 + x2
-				x = F.gelu(x)
+				x = self.func(x)													# Activation Function
 
 				x1 = self.norm(self.conv2(self.norm(x)))
 				x1 = self.mlp2(x1)
 				x2 = self.w2(x)
 				x = x1 + x2
-				x = F.gelu(x)
+				x = self.func(x)													# Activation Function
 
 				x1 = self.norm(self.conv3(self.norm(x)))
 				x1 = self.mlp3(x1)
@@ -202,6 +198,7 @@ class FNO2d(nn.Module):
 
 				x = x[..., :-self.padding, :-self.padding] # pad the domain if input is non-periodic
 				x = self.q(x)								# MLP Layer [20,width=20,64,64] -> [20,1,64,64]
+				x = self.dropout(x)						# Dropout Layer
 				x = x.permute(0, 2, 3, 1)	# [20,width=1,64,64] -> [20,64,64,1]
 				return x
 

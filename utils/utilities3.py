@@ -3,7 +3,8 @@ import numpy as np
 import scipy.io
 import h5py
 import torch.nn as nn
-
+import vtkmodules.all as vtk
+import numpy as np
 import operator
 from functools import reduce
 from functools import partial
@@ -336,3 +337,34 @@ def inverse_normalize(variable,min,max):
 	for i in range(variable.shape[0]):
 			variable[i] = variable[i]*(max[i]-min[i]+1e-6)+min[i]
 	return variable
+
+def cloud2vtk(x_num,y_num,data,data_name):
+	# 创建一个示例的二维速度场，假设是一个 m x n 的矩阵
+	m, n = x_num, y_num
+	velocity_field = np.random.rand(m, n)  # 使用随机数据作为示例速度场数据
+
+	# 创建一个 VTKImageData 对象
+	grid = vtk.vtkImageData()
+	grid.SetDimensions(m, n, 1)  # 设置网格尺寸
+	grid.SetSpacing(0.01, 0.01, 0.01)  # 设置网格间距
+
+	# 创建一个 VTK 数组来存储速度大小数据
+	velocity_data = vtk.vtkDoubleArray()
+	velocity_data.SetName("Velocity")  # 设置数组名称
+	for i in range(n):
+			for j in range(m):
+					velocity_data.InsertNextValue(data[i, j])
+
+	# 将速度大小数据附加到 VTKImageData 中
+	grid.GetPointData().AddArray(velocity_data)
+
+	# 创建一个 VTK XML Writer 来保存 VTK 文件
+	writer = vtk.vtkXMLImageDataWriter()
+	writer.SetFileName(data_name)  # 设置文件名
+	writer.SetInputData(grid)  # 设置输入数据
+
+	# 写入 VTK 文件
+	writer.Write()
+
+	# 输出成功消息
+	print("VTK 文件已创建: {}".format(data_name))
