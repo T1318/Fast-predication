@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 class ADF:
 	'''
-	要求输入的点的矩阵为[n,2]的形式
+
 	'''
 	def __init__(self, points_list):
 		self.x,self.y = sp.symbols('x y')
