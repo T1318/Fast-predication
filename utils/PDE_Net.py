@@ -168,8 +168,8 @@ class FNO2d(nn.Module):
 		def forward(self, x):
 				# x[20,64,64,10] [batchsize, x=64, y=64, t_len=10]
 				grid = self.get_grid(x.shape, x.device)	# [20,64,64,2]
-				x = torch.cat((x, grid), dim=-1)				# [20,64,64,12]
-				x = self.p(x)														# p: [20,64,64,12] -> [20,64,64,width=20]
+				x = torch.cat((x, grid), dim=-1)				# [20,64,64,5]
+				x = self.p(x)														# p: [20,64,64,5] -> [20,64,64,width=20]
 				x = x.permute(0, 3, 1, 2)								# [20,64,64,width=20] -> [20,width=20,64,64] [batchsize, channel, x, y]
 				x = F.pad(x, [0,self.padding, 0,self.padding]) # pad the domain if input is non-periodic
 
